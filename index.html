@@ -3,7 +3,7 @@
 <head>
     <meta charset='UTF-8'>
     <title>Opções de Entrega</title>
-    <script src="twebchannel.js" onerror="console.warn('twebchannel.js indisponível no ambiente local de teste.');"></script>
+    <script src="twebchannel.js" onerror="console.warn('twebchannel.js indisponível no ambiente de testes local.');"></script>
     <style>
         body { 
             font-family: "Segoe UI", sans-serif; 
@@ -120,22 +120,29 @@
         const nPort     = urlParams.get('port');
 
         window.onload = function() {
-            // AJUSTE CRÍTICO: Valida se o twebchannel está instanciado E ativo no escopo global do navegador
-            if (nPort && typeof twebchannel !== 'undefined' && typeof twebchannel.isInit === 'function' && twebchannel.isInit()) {
+            // Verifica se a porta existe na URL e se a biblioteca carregou
+            if (nPort && typeof twebchannel !== 'undefined') {
                 try {
+                    // Estabelece a conexão WebSocket na porta enviada pelo Protheus
                     twebchannel.connect(parseInt(nPort));
+                    
+                    // Escuta eventos direcionados pelo Protheus via advplToJs
                     twebchannel.advplToJs = function(key, val) { 
                         if(key === 'alert') alert(val); 
                         if(key === 'render') {
                             renderCards(JSON.parse(val)); 
                         }
                     };
-                    console.log("Conectado ao ambiente Protheus.");
+
+                    // SINAL CRÍTICO: Avisa o Protheus que o canal de comunicação está pronto para receber o JSON
+                    twebchannel.jsToAdvpl('READY', '');
+                    console.log("WebChannel conectado e sinal READY emitido.");
                 } catch (e) {
+                    console.error("Erro na inicialização do WebChannel, carregando simulador.", e);
                     modoSimulacao();
                 }
             } else {
-                // Se abrir de fora (no seu teste de URL), força a exibição dos dados de simulação sem travar a tela
+                // Abre em modo simulação se acessado puramente de fora do SmartClient
                 modoSimulacao();
             }
         };
@@ -192,7 +199,8 @@
             var manual = document.getElementById(inputId).value;
             var dtFinal = (manual !== '') ? manual : dtSug;
             
-            if (typeof twebchannel !== 'undefined' && typeof twebchannel.jsToAdvpl === 'function' && twebchannel.isInit()) {
+            // Retorna a estrutura selecionada para o AdvPL processar
+            if (typeof twebchannel !== 'undefined' && typeof twebchannel.jsToAdvpl === 'function') {
                 twebchannel.jsToAdvpl('SAVE_DIAS', val + '|' + dtFinal);
             } else {
                 alert(`[Modo Teste] Enviando para o Protheus:\nValor: R$ ${val}\nData Final: ${dtFinal}`);
