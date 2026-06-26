@@ -1,38 +1,158 @@
-<script>
-        // Captura os parâmetros passados na URL (?peso=X&zona=Y&port=Z)
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>Opções de Entrega</title>
+    <script src="twebchannel.js" onerror="console.warn('Rodando fora do ambiente SmartClient.')"></script>
+    <style>
+        body { 
+            font-family: "Segoe UI", sans-serif; 
+            background: #f0f2f5; 
+            padding: 15px; 
+            text-align: center; 
+            user-select: none; 
+            margin:0; 
+        }
+        h2 { 
+            color: #2c3e50; 
+            margin: 8px 0; 
+            font-size: 18px; 
+        }
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            max-width: 900px; 
+            margin: 0 auto; 
+        }
+        .card { 
+            background: white; 
+            border-radius: 10px; 
+            padding: 10px 15px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            border: 2px solid transparent; 
+            border-top: 8px solid #ccc; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            text-align: left; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 200px; 
+        }
+        .card:hover { 
+            transform: translateY(-2px); 
+            border-color: #ddd; 
+        }
+        .card.selected { 
+            border-color: #2ecc71; 
+            border-top-color: #2ecc71; 
+            background: #fafff9; 
+        }
+        .title { 
+            font-size: 14px; 
+            font-weight: bold; 
+            color: #34495e; 
+        }
+        .price { 
+            font-size: 22px; 
+            color: #27ae60; 
+            font-weight: bold; 
+            margin: 5px 0; 
+        }
+        .date-sug { 
+            color: #1976d2; 
+            font-size: 11px; 
+            font-weight: bold; 
+            margin-bottom: 5px; 
+        }
+        .manual-date { 
+            margin: 5px 0; 
+            padding: 5px; 
+            border-top: 1px dashed #eee; 
+        }
+        label { 
+            font-size: 10px; 
+            color: #888; 
+            display: block; 
+        }
+        input[type='date'] { 
+            width: 100%; 
+            padding: 4px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            font-size: 12px; 
+        }
+        .conf-btn { 
+            display: none; 
+            width: 90%; 
+            background: #2ecc71; 
+            color: white; 
+            text-align: center; 
+            padding: 8px; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            margin: 10px auto 0 auto; 
+            cursor: pointer; 
+            border: none; 
+            font-size: 12px; 
+        }
+        .selected .conf-btn { 
+            display: block; 
+        }
+        .desc { 
+            font-size: 10px; 
+            color: #7f8c8d; 
+            line-height: 1.2; 
+            margin-top: 5px; 
+            flex-grow: 1; 
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Escolha a Modalidade de Entrega</h2>
+    
+    <div class='grid' id="grid-opcoes">
+        </div>
+
+    <script>
+        // Captura a porta WebSocket enviada na URL do Protheus (?port=XXXX)
         const urlParams = new URLSearchParams(window.location.search);
         const nPort     = urlParams.get('port');
 
         window.onload = function() {
-            // Verifica se o twebchannel existe (Rodando por dentro do Protheus)
+            // Identifica se estamos rodando dentro do ecossistema do SmartClient Protheus
             if (typeof twebchannel !== 'undefined' || window.qt || navigator.userAgent.includes("QtWebEngine")) {
                 
-                // Inicializa o canal na porta dinâmica do WebSocket gerada no Cloud
+                // Conecta o canal WebSocket na porta gerada dinamicamente pelo Cloud
                 twebchannel.connect(parseInt(nPort));
                 
-                // Aguarda o gatilho enviado pelo AdvPL (fSendToJs)
+                // Mapeia os gatilhos recebidos de volta do AdvPL (fSendToJs)
                 twebchannel.advplToJs = function(key, val) { 
                     if(key === 'alert') alert(val); 
                     if(key === 'render') {
-                        // Injeta os dados REAIS consultados na ZZ4 e ZZ5 pelo Protheus
+                        // Limpa a tela e injeta os dados reais do banco (ZZ4 / ZZ5)
                         renderCards(JSON.parse(val)); 
                     }
                 };
             } else {
-                // APENAS PARA SEU TESTE NO NAVEGADOR: Dados mockados fictícios
-                console.log("Modo de teste manual externo ativo.");
+                // MODAL DE SEGURANÇA / TESTE MANUAL EXTERNO
+                // Exibe dados mockados fictícios caso o link seja acessado puramente pelo Chrome/Edge
+                console.log("Ambiente Protheus não detectado. Carregando modo de simulação.");
                 const dadosTeste = [
-                    {"modalidade":"[Teste] Normal","valor":"0,01","valorReal":"0.01","descricao":"Transporte padrão econômico","cor":"#3498db","dataSugFmt":"10/07/2026","dataISO":"2026-07-10"},
-                    {"modalidade":"[Teste] Expressa 24h","valor":"150,00","valorReal":"150.00","descricao":"Prioridade total","cor":"#e74c3c","dataSugFmt":"26/06/2026","dataISO":"2026-06-26"}
+                    {"modalidade":"Entrega Normal","valor":"0,01","valorReal":"0.01","descricao":"Transporte padrão econômico","cor":"#3498db","dataSugFmt":"10/07/2026","dataISO":"2026-07-10"},
+                    {"modalidade":"Expressa 72 horas","valor":"10,00","valorReal":"10.00","descricao":"Atendimento em até 3 dias úteis","cor":"#f39c12","dataSugFmt":"29/06/2026","dataISO":"2026-06-29"},
+                    {"modalidade":"Expressa 48 horas","valor":"50,00","valorReal":"50.00","descricao":"Entrega rápida em 2 dias úteis","cor":"#9b59b6","dataSugFmt":"27/06/2026","dataISO":"2026-06-27"},
+                    {"modalidade":"Expressa 24 horas","valor":"150,00","valorReal":"150.00","descricao":"Prioridade total em 1 dia útil","cor":"#e74c3c","dataSugFmt":"26/06/2026","dataISO":"2026-06-26"}
                 ];
                 renderCards(dadosTeste);
             }
         };
 
-        // Função que desenha os cards dinamicamente na tela recebendo a consulta
+        // Função responsável por montar estruturalmente a árvore de elementos (Cards)
         function renderCards(aOpcoes) {
             const grid = document.getElementById('grid-opcoes');
-            grid.innerHTML = ""; // Limpa os dados antigos da tela
+            grid.innerHTML = ""; 
 
             aOpcoes.forEach((opcao, index) => {
                 const card = document.createElement('div');
@@ -55,27 +175,32 @@
             });
         }
 
+        // Controla visualmente a borda verde de seleção ativa
         function selectCard(el) {
             document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
             el.classList.add('selected');
         }
 
+        // Validação básica de restrição de datas no próprio cliente HTML
         function validDt(el, min) {
             var d = new Date(el.value); var day = d.getUTCDay();
             if(day === 0) { alert('Domingos não são válidos para entrega.'); el.value = ''; return; }
             if(el.value && el.value < min) { alert('A data não pode ser menor que a sugerida.'); el.value = ''; }
         }
         
+        // Devolve os dados selecionados pelo usuário para o callback AdvPL
         function confirmOp(event, val, dtSug, inputId) {
             event.stopPropagation();
             var manual = document.getElementById(inputId).value;
             var dtFinal = (manual !== '') ? manual : dtSug;
             
             if (typeof twebchannel !== 'undefined' && twebchannel.jsToAdvpl) {
-                // Retorna o valor real consultado e a data escolhida de volta para o Protheus
+                // Envia a chave SAVE_DIAS de volta para a fHdlChoice processar
                 twebchannel.jsToAdvpl('SAVE_DIAS', val + '|' + dtFinal);
             } else {
-                alert(`[Modo Teste] Enviando para o Protheus: Valor R$ ${val} | Data: ${dtFinal}`);
+                alert(`[Modo Teste] Enviando para o Protheus:\nValor: R$ ${val}\nData Final: ${dtFinal}`);
             }
         }
     </script>
+</body>
+</html>
